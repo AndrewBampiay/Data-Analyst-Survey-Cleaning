@@ -1,0 +1,146 @@
+CREATE TABLE [dbo].[SURVEY_1] (
+    [Unique_ID]            NVARCHAR (50)  NOT NULL,
+    [role]                 NVARCHAR (150) NULL,
+    [salaryx1000]          NVARCHAR (50)  NULL,
+    [happy_role]           TINYINT        NULL,
+    [good_balance]         TINYINT        NULL,
+    [good_upward_mobility] TINYINT        NULL,
+    [change_difficulty]    NVARCHAR (50)  NULL,
+    [desired_role_type]    NVARCHAR (200) NULL,
+    [gender]               NVARCHAR (50)  NULL,
+    [age]                  TINYINT        NULL,
+    [Ethnicity]            NVARCHAR (100) NULL,
+    [industry_new]         VARCHAR (200)  NULL,
+    [country_new]          VARCHAR (100)  NULL,
+    [new_p_language]       VARCHAR (100)  NULL,
+    CONSTRAINT [PK_SURVEY_1] PRIMARY KEY CLUSTERED ([Unique_ID] ASC)
+);
+
+alter table SURVEY
+drop constraint PK_SURVEY
+insert into SURVEY_1
+(Unique_id,role,
+salaryx1000,
+happy_role,
+good_balance,
+good_upward_mobility,
+change_difficulty,
+desired_role_type,
+gender,
+age,
+ethnicity,
+industry_new,
+country_new,
+new_p_language)
+select* from SURVEY
+alter table SURVEY
+add constraint PK_SURVEY PRIMARY KEY (Unique_id)
+
+select*
+from SURVEY_1--This is a copy of SURVEY Table
+-----------------------------------------------------------------------------------------------------------------------------
+
+alter table SURVEY
+add industry_new varchar(200)
+update SURVEY
+set industry_new= replace(industry,substring(industry,1,charindex(':',industry)),'') ,'')
+from SURVEY
+where industry like '%other%'
+
+select coalesce(industry_new,industry) new_industry
+from SURVEY
+
+update SURVEY
+set industry_new=coalesce(industry_new,industry) 
+from SURVEY
+
+
+select*
+from SURVEY
+
+
+alter table SURVEY
+add country_new varchar(100)
+
+select country,replace(country,substring(country,1,charindex(':',country)),'') country_new
+from SURVEY
+where country like '%other%'
+
+
+update SURVEY
+set country_new=replace(country,substring(country,1,charindex(':',country)),'') 
+from SURVEY
+where country like '%other%'
+
+update SURVEY
+set country_new=coalesce(country_new,country)
+from SURVEY
+
+update SURVEY
+set country_new=replace(country_new,'other',null)
+where country_new like '%other%'
+
+
+update SURVEY
+set Ethnicity=replace(ethnicity,substring(ethnicity,1,charindex(':',ethnicity)),'')
+from SURVEY
+where Ethnicity like 'other%'
+
+update SURVEY
+set ethnicity=replace(ethnicity,'other',null)
+from SURVEY
+where ethnicity like 'other%'
+
+update SURVEY
+set desired_role_type=replace(desired_role_type,'other',null)
+from SURVEY
+where desired_role_type like '%other%'
+
+update SURVEY
+set current_salary=trim('[!\+]' from replace(current_salary,'k',''))
+from SURVEY
+
+
+exec sp_rename 'SURVEY.current_salary','salaryx1000','column'
+
+
+alter table SURVEY
+add new_p_language varchar(100)
+
+
+update SURVEY
+set new_p_language=case when p_language like '%sql%' then replace(p_language,p_language,'SQL') else trim(':'from replace(p_language,'other',''))  end 
+from SURVEY
+where p_language like 'other%'
+
+update SURVEY
+set new_p_language=coalesce(new_p_language,p_language)
+from SURVEY
+
+
+update SURVEY
+set role=trim(':' from replace(role,'other (please specify)',''))
+from SURVEY
+alter table SURVEY
+drop column industry,p_language,country
+
+delete from SURVEY
+where ascii(**i put in all columns**) is null
+
+-------------------------------------------------------------------------------------------------------------------------------
+
+-- I deleted data where count_industry<5 and count_language<4 and count_country<4 to as these samples didnt have enough data to be impactful
+
+with cte as(
+select *,count(country_new) over(partition by country_new order by country_new) count_country,
+count(new_p_language) over(partition by new_p_language order by new_p_language) count_language,
+count(industry_new) over(partition by industry_new order by industry_new) count_industry,
+ROW_NUMBER()over(partition by unique_id order by unique_id) row_num
+from SURVEY) 
+select*
+from cte
+where count_industry<5 or count_language<4 or count_country<4
+
+--cleaned table
+select *   
+from SURVEY
